@@ -14,26 +14,32 @@ ZPATCHVIEWER_API BOOL DVP_InitEx(LPDVPINITEXDATA pInitExData)
 	// This area handles this issue.
 	union DopusVersion
 	{
-		DWORD full;
+		struct 
+		{
+			DWORD minor;
+			DWORD major;
+		} win32ver;
 		struct
 		{
+			WORD build;
 			WORD minor;
 			WORD major;
+			WORD version;
 		} splitver;
 	};
 
+	// Convert the version to human-readable format
 	DopusVersion Version;
-	Version.full = pInitExData->dwOpusVerMajor;
+	Version.win32ver.major = pInitExData->dwOpusVerMajor;
+	Version.win32ver.minor = pInitExData->dwOpusVerMinor;
 
-	// Directory Opus up to 12.6 needs a hack to display text plugins.
-	// More details here: https://resource.dopus.com/t/creating-a-simple-data-visualizer/26408/12
-	if (pInitExData->dwOpusVerMajor >= 0x000c0006	&&	// At least major version 12
-		Version.splitver.major == 12				&&	// Double check it!
-		Version.splitver.minor <= 6					&&	// Up to version 12.6 is supported
-		pInitExData->dwOpusVerMinor == 0)				// Make sure we have the bugged version of it.
-	{
+	// Only allow the plugin to initialize up to Directory Opus version 12.6.0.0 due to a bug (https://resource.dopus.com/t/creating-a-simple-data-visualizer/26408/12)
+	if (Version.splitver.version < 12)
 		return true;
-	}
+
+	if (Version.splitver.version == 12 && Version.splitver.major <= 6)
+		return true;
+
 	return false;
 }
 
