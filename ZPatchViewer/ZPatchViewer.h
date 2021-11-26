@@ -42,6 +42,6 @@ enum PatchOperation
 
 struct FileOperation 
 {
-	PatchOperation	Operation;
+	PatchOperation	Operation = Patch_Unknown;
 	std::string		FileName;
 };

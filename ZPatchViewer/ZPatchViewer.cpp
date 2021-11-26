@@ -33,14 +33,23 @@ ZPATCHVIEWER_API BOOL DVP_InitEx(LPDVPINITEXDATA pInitExData)
 	Version.win32ver.major = pInitExData->dwOpusVerMajor;
 	Version.win32ver.minor = pInitExData->dwOpusVerMinor;
 
-	// Only allow the plugin to initialize up to Directory Opus version 12.6.0.0 due to a bug (https://resource.dopus.com/t/creating-a-simple-data-visualizer/26408/12)
 	if (Version.splitver.version < 12)
-		return true;
+		return false;
 
-	if (Version.splitver.version == 12 && Version.splitver.major <= 6)
-		return true;
+	// A bug was fixed in 12.25.4 beta, that prevented the plugin from working. Do not allow older versions to initialize the plugin.
+	if (Version.splitver.version == 12)
+	{
+		if (Version.splitver.major < 26)
+		{
+			if (Version.splitver.major == 25 && Version.splitver.minor >= 4)
+			{
+				return true;
+			}
+			return false;
+		}
+	}
 
-	return false;
+	return true;
 }
 
 ZPATCHVIEWER_API BOOL DVP_Identify(LPVIEWERPLUGININFO lpVPInfo)
@@ -53,9 +62,9 @@ ZPATCHVIEWER_API BOOL DVP_Identify(LPVIEWERPLUGININFO lpVPInfo)
 						DVPFIF_ExtensionsOnlyForThumbnails |
 						DVPFIF_NeedRandomSeek;
 
-	// Version number (1.0.0.1)
+	// Version number (1.0.0.2)
 	lpVPInfo->dwVersionHigh = MAKELPARAM(0, 1);
-	lpVPInfo->dwVersionLow = MAKELPARAM(1, 0);
+	lpVPInfo->dwVersionLow = MAKELPARAM(2, 0);
 
 	// Handle ".zpatch" files
 	StringCchCopy(lpVPInfo->lpszHandleExts,		lpVPInfo->cchHandleExtsMax,			TEXT(".zpatch"));
@@ -63,8 +72,8 @@ ZPATCHVIEWER_API BOOL DVP_Identify(LPVIEWERPLUGININFO lpVPInfo)
 	// Plugin Information
 	StringCchCopy(lpVPInfo->lpszName,			lpVPInfo->cchNameMax,				TEXT("ZPatchViewer"));
 	StringCchCopy(lpVPInfo->lpszDescription,	lpVPInfo->cchDescriptionMax,		TEXT("This plugin allows the user to vire ZPatch file data contents in Directory Opus"));
-	StringCchCopy(lpVPInfo->lpszCopyright,		lpVPInfo->cchCopyrightMax,			TEXT("(C) Copyright 2016-2017 Felipe \"Zoc\" Silveira"));
-	StringCchCopy(lpVPInfo->lpszURL,			lpVPInfo->cchURLMax,				TEXT("https://github.com/TheZoc/ZPatcher"));
+	StringCchCopy(lpVPInfo->lpszCopyright,		lpVPInfo->cchCopyrightMax,			TEXT("(C) Copyright 2016-2021 Felipe Guedes da Silveira"));
+	StringCchCopy(lpVPInfo->lpszURL,			lpVPInfo->cchURLMax,				TEXT("https://github.com/TheZoc/ZPatchViewer"));
 
 	// The absolute minimum file size for a ZPatch file is 19 (A single delete file operation in a file with a single character, on ZPATCH version 1.0)
 	lpVPInfo->dwlMinFileSize = 19;
@@ -90,15 +99,6 @@ ZPATCHVIEWER_API BOOL DVP_IdentifyFileBytes(HWND hWnd, LPTSTR lpszName, LPBYTE l
 
 	lpVPFileInfo->dwPrivateData[0] = lpData[7];
 
-	// Kludge until Opus 12.7, if implementing DVP_LoadText - https://resource.dopus.com/t/creating-a-simple-data-visualizer/26408/12
-	// - Need to fill the buffer with ASCII (else the text viewer will reject it, as it incorrectly looks at the buffer not the stream)
-	// - Need to only implement DVP_IdentifyFileBytes, not DVP_IdentifyFile or DVP_IdentifyFileStream (else we can't access the buffer)
-	// - For dev/test only. Probably best not to release a plugin with this kludge, unless you really need compatibility with older version
-	//   of Opus. If you do, it would make sense to do a version test (Opus version is given to you in DVP_InitEx) and skip this for 12.7+.
-	for(UINT i = 0; i < uiDataSize; ++i)
-	{
-		lpData[i] = 'a';
-	}
 	return true;
 }
 
